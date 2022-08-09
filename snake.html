@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SNAKE</title>
+    <style>
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-family: monospace;
+        }
+
+        body > p {
+            width: 600px;
+            padding-right: 2px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            text-align: end;
+        }
+
+        #overlay {
+            width: 100vw;
+            height: 100vh;
+            position: absolute;
+            display: flex;
+            align-items: center;
+            color: white;
+            background-color: rgba(0, 0, 0, 0.6);
+            visibility: hidden;
+        }
+
+        #strip {
+            width: 100%;
+            height: 30%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 1.5rem;
+            background-color: black;
+        }
+
+        #strip h1 {
+            font-size: 3rem;
+        }
+
+        #strip p {
+            font-size: 1.5rem;
+        }
+
+        #strip button {
+            padding: .5rem 1rem;
+            font-family: monospace;
+            font-weight: bold;
+            border: .2rem solid black;
+        }
+
+        #strip button:hover {
+            color: white;
+            background-color: black;
+            border: .2rem solid white;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <p>SCORE: <span id="score">0</span></p>
+    <canvas id="game" width="600" height="600"></canvas>
+    <div id="overlay">
+        <div id="strip">
+            <h1>GAME OVER</h1>
+            <p id="gameOverScore">SCORE: 7</p>
+            <button id="restart">RESTART</button>
+        </div>
+    </div>
+
+    <script>
+        let canvas = document.getElementById('game')
+        let ctx = canvas.getContext('2d')
+        let speed = 5
+        let tileCount = 20
+        let tileSize = canvas.width / tileCount
+        let headX = canvas.width / 2
+        let headY = canvas.height / 2
+        let velocityX = 0
+        let velocityY = 0
+        let foodX = Math.floor(Math.random() * tileCount) * tileSize
+        let foodY = Math.floor(Math.random() * tileCount) * tileSize
+        let snakeTailCoordinates = []
+        let snakeTailLength = 0
+        class SnakePart {
+            constructor(x, y) {
+                this.x = x
+                this.y = y
+            }
+        }
+        let gameOver = false
+        let score = document.getElementById('score')
+        let overlay = document.getElementById('overlay')
+        let gameOverScore = document.getElementById('gameOverScore')
+        let restart = document.getElementById('restart')
+
+        gameLoop()
+
+        function gameLoop() {
+            if (gameOver) {
+                gameOverScore.innerHTML = `SCORE: ${score.innerHTML}`
+                overlay.style.visibility = 'visible'
+                return
+            }
+            renderGameBoard()
+            renderSnake()
+            foodCollision()
+            renderFood()
+            moveSnake()
+            snakeCollision()
+            setTimeout(gameLoop, 1000 / speed)
+        }
+
+        // EVENT LISTENERS
+        addEventListener('keydown', keyPress)
+
+        function keyPress(e) {
+            switch(e.key) {
+                case "ArrowUp":
+                    if (velocityY !== 1) {
+                        velocityX = 0
+                        velocityY = -1
+                    }
+                    break
+                case "ArrowRight":
+                    if (velocityX !== -1) {
+                        velocityX = 1
+                        velocityY = 0
+                    }
+                    break
+                case "ArrowDown":
+                    if (velocityY !== -1) {
+                        velocityX = 0
+                        velocityY = 1
+                    }
+                    break
+                case "ArrowLeft":
+                    if (velocityX !== 1) {
+                        velocityX = -1
+                        velocityY = 0
+                    }
+                    break
+            }
+        }
+
+        function moveSnake() {
+            headX += tileSize * velocityX
+            headY += tileSize * velocityY
+        }
+
+        restart.addEventListener('click', restartGame)
+
+        function restartGame() {
+            window.location.reload()
+        }
+
+        // RENDERING
+        function renderGameBoard() {
+            ctx.fillStyle = 'black'
+            ctx.fillRect(0, 0, canvas.width - 2, canvas.height - 2)
+        }
+
+        function renderSnake() {
+            // render snake tail
+            ctx.fillStyle = 'yellow'
+            snakeTailCoordinates.forEach(coord => {
+                ctx.fillRect(coord.x, coord.y, tileSize - 2, tileSize - 2)
+            })
+
+            // push snake tail coordinates into array
+            snakeTailCoordinates.push(new SnakePart(headX, headY))
+            if (snakeTailCoordinates.length > snakeTailLength) {
+            snakeTailCoordinates.shift()
+            }
+            
+            // render snake head
+            ctx.fillStyle = 'orange'
+            ctx.fillRect(headX, headY, tileSize - 2, tileSize - 2)
+        }
+
+        function renderFood() {
+            ctx.fillStyle = 'green'
+            ctx.fillRect(foodX, foodY, tileSize - 2, tileSize - 2)
+        }
+
+        // CHECKING COLLISIONS
+        function snakeCollision() {
+            // check collision snake head vs. walls
+            if (headX < 0 || headX >= canvas.width) {
+                gameOver = true
+            } else if (headY < 0 || headY >= canvas.height) {
+                gameOver = true
+            }
+            
+            // check collision snake head vs. snake tail
+            if (snakeTailCoordinates.length !== 0) {
+                snakeTailCoordinates.forEach(coord => {
+                if (headX === coord.x && headY === coord.y) {
+                        gameOver = true
+                    }
+                })
+            }
+        }
+
+        function foodCollision() {
+            // check collision snake head vs. food
+            if (headX === foodX && headY === foodY) {
+                foodX = Math.floor(Math.random() * tileCount) * tileSize
+                foodY = Math.floor(Math.random() * tileCount) * tileSize
+                snakeTailLength++
+                score.innerHTML++
+                speed += .1
+            }
+
+            // check collision snake head vs. snake tail
+            snakeTailCoordinates.forEach(coord => {
+                if (coord.x === foodX && coord.y === foodY) {
+                    foodX = Math.floor(Math.random() * tileCount) * tileSize
+                    foodY = Math.floor(Math.random() * tileCount) * tileSize
+                }
+            })
+        }
+    </script>
+</body>
+</html>
